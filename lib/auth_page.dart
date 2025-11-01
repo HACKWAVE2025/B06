@@ -10,8 +10,14 @@ class AuthPage extends StatelessWidget {
 
   Future<void> _signInWithGoogle(BuildContext context, String role) async {
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+
+      // 👇 Force the account chooser to appear every time
+      await googleSignIn.signOut();
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return; // user canceled
+
       final googleAuth = await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
@@ -24,21 +30,54 @@ class AuthPage extends StatelessWidget {
       final user = userCredential.user;
 
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'uid': user.uid,
-          'name': user.displayName ?? '',
-          'email': user.email ?? '',
-          'role': role,
-        }, SetOptions(merge: true));
+        // Check if the user already exists in Firestore
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
-        await FirebaseFirestore.instance.collection('wallets').doc(user.uid).set({
-          'uid': user.uid,
-          'points': 0,
-        }, SetOptions(merge: true));
+        if (userDoc.exists) {
+          // Existing user
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Welcome back, ${user.displayName ?? 'User'}!")),
+          );
+        } else {
+          // New user, create Firestore entry
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+            'uid': user.uid,
+            'name': user.displayName ?? '',
+            'email': user.email ?? '',
+            'role': role,
+          });
 
+          await FirebaseFirestore.instance.collection('wallets').doc(user.uid).set({
+            'uid': user.uid,
+            'points': 0,
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Account created successfully!")),
+          );
+        }
+
+        // Navigate to Dashboard
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const Dashboard()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'account-exists-with-different-credential') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "An account already exists with this email using a different sign-in method.",
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Google sign-in failed: ${e.message}")),
         );
       }
     } catch (e) {
@@ -69,7 +108,9 @@ class AuthPage extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const LoginPage(role: "adult")),
+                    MaterialPageRoute(
+                      builder: (_) => const LoginPage(role: "adult"),
+                    ),
                   );
                 },
                 child: const Text("Adult (18+)"),

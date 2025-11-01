@@ -65,9 +65,17 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _signInWithGoogle() async {
     try {
       setState(() => loading = true);
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;
+
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+
+      // 👇 Always show account picker
+      await googleSignIn.signOut();
+
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return; // user canceled
+
       final googleAuth = await googleUser.authentication;
+
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -78,26 +86,48 @@ class _LoginPageState extends State<LoginPage> {
       final user = userCredential.user;
 
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'uid': user.uid,
-          'name': user.displayName ?? '',
-          'email': user.email ?? '',
-          'role': widget.role,
-        }, SetOptions(merge: true));
+        // Check if user data already exists in Firestore
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
-        await FirebaseFirestore.instance.collection('wallets').doc(user.uid).set({
-          'uid': user.uid,
-          'points': 0,
-        }, SetOptions(merge: true));
+        if (userDoc.exists) {
+          _showError("Welcome back, ${user.displayName ?? 'User'}!");
+        } else {
+          // Create new user record
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+            'uid': user.uid,
+            'name': user.displayName ?? '',
+            'email': user.email ?? '',
+            'role': widget.role,
+          });
+
+          await FirebaseFirestore.instance.collection('wallets').doc(user.uid).set({
+            'uid': user.uid,
+            'points': 0,
+          });
+          _showError("Account created successfully!");
+        }
       }
 
       _navigateToDashboard();
+    } on FirebaseAuthException catch (e) {
+      // Handle known Firebase auth errors
+      if (e.code == 'account-exists-with-different-credential') {
+        _showError(
+          "An account already exists with this email using a different sign-in method.",
+        );
+      } else {
+        _showError(e.message ?? "Google sign-in failed.");
+      }
     } catch (e) {
-      _showError("Google sign-in failed");
+      _showError("Google sign-in failed: $e");
     } finally {
       setState(() => loading = false);
     }
   }
+
 
   void _navigateToDashboard() {
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const Dashboard()));

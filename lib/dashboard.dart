@@ -59,6 +59,7 @@ class _DashboardState extends State<Dashboard> {
 
     return Scaffold(
       appBar: AppBar(
+          automaticallyImplyLeading: false,
         title: const Text("Dashboard"),
         actions: [
           IconButton(
