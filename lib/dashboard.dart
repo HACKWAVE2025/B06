@@ -149,9 +149,7 @@ class _DashboardState extends State<Dashboard> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildActionButton("Play Eco Games", Icons.videogame_asset, primaryGreen),
-              const SizedBox(height: 12),
-              _buildActionButton("View Challenges", Icons.flag, primaryGreen),
+              _buildActionButton("Play GamEco", Icons.videogame_asset, primaryGreen),
             ] else if (role == "adult") ...[
               Text(
                 "🌿 Adult Dashboard",
@@ -163,8 +161,6 @@ class _DashboardState extends State<Dashboard> {
               ),
               const SizedBox(height: 16),
               _buildActionButton("View Eco Tips", Icons.lightbulb_outline, primaryGreen),
-              const SizedBox(height: 12),
-              _buildActionButton("Track Family Progress", Icons.group, primaryGreen),
             ] else ...[
               const Text(
                 "No specific role assigned.",
