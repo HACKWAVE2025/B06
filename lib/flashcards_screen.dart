@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart';
+import 'auth_page.dart';
 
 class FlashCardsScreen extends StatelessWidget {
   const FlashCardsScreen({super.key});
@@ -16,7 +16,7 @@ class FlashCardsScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  MaterialPageRoute(builder: (_) => const AuthPage()),
                 );
               },
               child: const Text("Continue to Login"),

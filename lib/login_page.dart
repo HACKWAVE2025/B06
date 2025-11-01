@@ -1,35 +1,59 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'dashboard.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final String role;
+  const LoginPage({super.key, required this.role});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
   bool isLogin = true;
   bool loading = false;
 
   Future<void> _signInWithEmail() async {
     try {
       setState(() => loading = true);
+      UserCredential userCredential;
+
       if (isLogin) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
+        userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
       } else {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        if (_passwordController.text.trim() != _confirmController.text.trim()) {
+          _showError("Passwords do not match");
+          return;
+        }
+
+        userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+          'uid': userCredential.user!.uid,
+          'name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'role': widget.role,
+        });
+
+        await FirebaseFirestore.instance.collection('wallets').doc(userCredential.user!.uid).set({
+          'uid': userCredential.user!.uid,
+          'points': 0,
+        });
       }
+
       _navigateToDashboard();
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? "Error occurred");
@@ -41,16 +65,32 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _signInWithGoogle() async {
     try {
       setState(() => loading = true);
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) return;
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
+      final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
+      final userCredential =
       await FirebaseAuth.instance.signInWithCredential(credential);
+      final user = userCredential.user;
+
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'name': user.displayName ?? '',
+          'email': user.email ?? '',
+          'role': widget.role,
+        }, SetOptions(merge: true));
+
+        await FirebaseFirestore.instance.collection('wallets').doc(user.uid).set({
+          'uid': user.uid,
+          'points': 0,
+        }, SetOptions(merge: true));
+      }
+
       _navigateToDashboard();
     } catch (e) {
       _showError("Google sign-in failed");
@@ -77,8 +117,12 @@ class _LoginPageState extends State<LoginPage> {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                if (!isLogin)
+                  TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Name")),
                 TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Email")),
                 TextField(controller: _passwordController, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
+                if (!isLogin)
+                  TextField(controller: _confirmController, decoration: const InputDecoration(labelText: "Confirm Password"), obscureText: true),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: loading ? null : _signInWithEmail,

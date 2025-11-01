@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
       title: 'Auth Demo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.indigo),
-      home: const SplashScreen(),
+      home: const SplashPage(),
     );
   }
 }
