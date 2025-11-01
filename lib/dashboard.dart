@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'auth_page.dart';
+import 'daily_tasks.dart'; // ✅ Import new page
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -149,7 +150,12 @@ class _DashboardState extends State<Dashboard> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildActionButton("Play GamEco", Icons.videogame_asset, primaryGreen),
+              _buildActionButton(
+                "Play GamEco",
+                Icons.videogame_asset,
+                primaryGreen,
+                onPressed: () {},
+              ),
             ] else if (role == "adult") ...[
               Text(
                 "🌿 Adult Dashboard",
@@ -160,7 +166,17 @@ class _DashboardState extends State<Dashboard> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildActionButton("View Eco Tips", Icons.lightbulb_outline, primaryGreen),
+              _buildActionButton(
+                "Daily Tasks",
+                Icons.task_alt,
+                primaryGreen,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DailyTasks()),
+                  );
+                },
+              ),
             ] else ...[
               const Text(
                 "No specific role assigned.",
@@ -173,7 +189,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, Color color) {
+  Widget _buildActionButton(String label, IconData icon, Color color, {required VoidCallback onPressed}) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -189,7 +205,7 @@ class _DashboardState extends State<Dashboard> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        onPressed: () {},
+        onPressed: onPressed,
       ),
     );
   }
