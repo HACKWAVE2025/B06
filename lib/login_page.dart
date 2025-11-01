@@ -20,6 +20,11 @@ class _LoginPageState extends State<LoginPage> {
   bool isLogin = true;
   bool loading = false;
 
+  final Color darkGreen = const Color(0xFF203A2C);
+  final Color lightBeige = const Color(0xFFF3EFEA);
+  final Color accentGreen = const Color(0xFF6DAA7F);
+  final Color accentYellow = const Color(0xFFE1B866);
+
   Future<void> _signInWithEmail() async {
     try {
       setState(() => loading = true);
@@ -65,44 +70,26 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _signInWithGoogle() async {
     try {
       setState(() => loading = true);
-
       final GoogleSignIn googleSignIn = GoogleSignIn();
-
-      // 👇 Always show account picker
-      await googleSignIn.signOut();
-
+      await googleSignIn.signOut(); // Always show account picker
       final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return; // user canceled
-
+      if (googleUser == null) return;
       final googleAuth = await googleUser.authentication;
-
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-
-      final userCredential =
-      await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
       final user = userCredential.user;
-
       if (user != null) {
-        // Check if user data already exists in Firestore
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (userDoc.exists) {
-          _showError("Welcome back, ${user.displayName ?? 'User'}!");
-        } else {
-          // Create new user record
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (!userDoc.exists) {
           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
             'uid': user.uid,
             'name': user.displayName ?? '',
             'email': user.email ?? '',
             'role': widget.role,
           });
-
           await FirebaseFirestore.instance.collection('wallets').doc(user.uid).set({
             'uid': user.uid,
             'points': 0,
@@ -110,17 +97,7 @@ class _LoginPageState extends State<LoginPage> {
           _showError("Account created successfully!");
         }
       }
-
       _navigateToDashboard();
-    } on FirebaseAuthException catch (e) {
-      // Handle known Firebase auth errors
-      if (e.code == 'account-exists-with-different-credential') {
-        _showError(
-          "An account already exists with this email using a different sign-in method.",
-        );
-      } else {
-        _showError(e.message ?? "Google sign-in failed.");
-      }
     } catch (e) {
       _showError("Google sign-in failed: $e");
     } finally {
@@ -128,48 +105,139 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-
   void _navigateToDashboard() {
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const Dashboard()));
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: darkGreen,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(isLogin ? "Login" : "Sign Up")),
+      backgroundColor: lightBeige,
+      appBar: AppBar(
+        backgroundColor: darkGreen,
+        title: Text(
+          isLogin ? "Login" : "Sign Up",
+          style: const TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+        elevation: 0,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Center(
           child: SingleChildScrollView(
-            child: Column(
-              children: [
-                if (!isLogin)
-                  TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Name")),
-                TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Email")),
-                TextField(controller: _passwordController, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
-                if (!isLogin)
-                  TextField(controller: _confirmController, decoration: const InputDecoration(labelText: "Confirm Password"), obscureText: true),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: loading ? null : _signInWithEmail,
-                  child: loading ? const CircularProgressIndicator() : Text(isLogin ? "Login" : "Sign Up"),
+            child: Card(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Text(
+                      isLogin ? "Welcome Back 🌿" : "Join GameCo 🌱",
+                      style: TextStyle(
+                        color: darkGreen,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (!isLogin)
+                      TextField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: "Name",
+                          filled: true,
+                          fillColor: lightBeige,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        labelText: "Email",
+                        filled: true,
+                        fillColor: lightBeige,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: "Password",
+                        filled: true,
+                        fillColor: lightBeige,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    if (!isLogin) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _confirmController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: "Confirm Password",
+                          filled: true,
+                          fillColor: lightBeige,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentGreen,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: loading ? null : _signInWithEmail,
+                      child: loading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(isLogin ? "Login" : "Sign Up"),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () => setState(() => isLogin = !isLogin),
+                      child: Text(
+                        isLogin
+                            ? "Create an account"
+                            : "Already have an account? Login",
+                        style: TextStyle(color: darkGreen),
+                      ),
+                    ),
+                    const Divider(height: 30, color: Colors.grey),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentYellow,
+                        foregroundColor: darkGreen,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: loading ? null : _signInWithGoogle,
+                      icon: const Icon(Icons.login),
+                      label: const Text("Continue with Google"),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                TextButton(
-                  onPressed: () => setState(() => isLogin = !isLogin),
-                  child: Text(isLogin ? "Create an account" : "Already have an account? Login"),
-                ),
-                const Divider(),
-                ElevatedButton.icon(
-                  onPressed: loading ? null : _signInWithGoogle,
-                  icon: const Icon(Icons.login),
-                  label: const Text("Continue with Google"),
-                ),
-              ],
+              ),
             ),
           ),
         ),

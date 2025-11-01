@@ -39,18 +39,26 @@ class AuthPage extends StatelessWidget {
         if (userDoc.exists) {
           // Existing user
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Welcome back, ${user.displayName ?? 'User'}!")),
+            SnackBar(
+                content:
+                Text("Welcome back, ${user.displayName ?? 'User'}!")),
           );
         } else {
           // New user, create Firestore entry
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
             'uid': user.uid,
             'name': user.displayName ?? '',
             'email': user.email ?? '',
             'role': role,
           });
 
-          await FirebaseFirestore.instance.collection('wallets').doc(user.uid).set({
+          await FirebaseFirestore.instance
+              .collection('wallets')
+              .doc(user.uid)
+              .set({
             'uid': user.uid,
             'points': 0,
           });
@@ -87,35 +95,217 @@ class AuthPage extends StatelessWidget {
     }
   }
 
+  // =================== UI ===================
+
   @override
   Widget build(BuildContext context) {
+    const deepGreen = Color(0xFF27463A);
+    const lightLime = Color(0xFFD6F0B2); // top gradient for Kid
+    const midLime = Color(0xFF85C67E);   // bottom gradient for Kid
+    const midGreen = Color(0xFF5FA06F);  // top gradient for Next-Gen
+    const darkGreen = Color(0xFF3A7D57); // bottom gradient for Next-Gen
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Select Role")),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Are you a?", style: TextStyle(fontSize: 22)),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: () => _signInWithGoogle(context, "child"),
-                child: const Text("Child (13 - 18)"),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const LoginPage(role: "adult"),
-                    ),
-                  );
+      // keep an AppBar to respect your original structure, but hide it
+      appBar: AppBar(
+        toolbarHeight: 0,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
+      backgroundColor: deepGreen,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Back button
+            Positioned(
+              top: 12,
+              left: 12,
+              child: _RoundBackButton(
+                onTap: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  }
                 },
-                child: const Text("Adult (18+)"),
+              ),
+            ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 64, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Kid Mode
+                  _ModeCard(
+                    title: 'Kid Mode',
+                    subtitle: 'Under 15',
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [lightLime, midLime],
+                    ),
+                    doodleAsset: 'assets/illustrations/rocket.png',
+                    onPressed: () => _signInWithGoogle(context, "child"),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Next-Gen Mode
+                  _ModeCard(
+                    title: 'Next-Gen Mode',
+                    subtitle: '15 and above',
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [midGreen, darkGreen],
+                    ),
+                    // re-uses rocket if you don't have a sparkle asset yet
+                    doodleAsset: 'assets/illustrations/rocket.png',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LoginPage(role: "adult"),
+                        ),
+                      );
+                    },
+                    darkText: true,
+                  ),
+
+                  const Spacer(),
+
+                  // Illustration at bottom
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Image.asset(
+                        'assets/illustrations/bulb_people.png',
+                        height: 220,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.lightbulb,
+                          color: Colors.white.withOpacity(0.85),
+                          size: 140,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- widgets used in the page (kept inside the same file) ----------
+
+class _RoundBackButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RoundBackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFEDE7E3),
+      shape: const CircleBorder(),
+      elevation: 0,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: const Padding(
+          padding: EdgeInsets.all(12.0),
+          child: Icon(Icons.arrow_back, color: Colors.black87, size: 26),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final LinearGradient gradient;
+  final String doodleAsset;
+  final VoidCallback onPressed;
+  final bool darkText; // for the darker second button
+
+  const _ModeCard({
+    required this.title,
+    required this.subtitle,
+    required this.gradient,
+    required this.doodleAsset,
+    required this.onPressed,
+    this.darkText = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final shadow = Colors.black.withOpacity(0.25);
+    final titleColor = darkText ? const Color(0xFF0F2B1F) : const Color(0xFF153524);
+    final subColor = darkText ? const Color(0xFF0F2B1F).withOpacity(0.8) : const Color(0xFF153524).withOpacity(0.8);
+
+    return Material(
+      color: Colors.transparent,
+      elevation: 0,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onPressed,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: shadow,
+                blurRadius: 10,
+                offset: const Offset(0, 6),
               ),
             ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: titleColor,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          color: subColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // small doodle on the right (optional)
+                Image.asset(
+                  doodleAsset,
+                  width: 46,
+                  height: 46,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.auto_awesome, size: 30, color: Colors.white),
+                ),
+              ],
+            ),
           ),
         ),
       ),

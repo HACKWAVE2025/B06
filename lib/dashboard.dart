@@ -16,6 +16,9 @@ class _DashboardState extends State<Dashboard> {
   int? points;
   bool loading = true;
 
+  final Color primaryGreen = Colors.greenAccent.shade400;
+  final Color backgroundColor = const Color(0xFF121212);
+
   @override
   void initState() {
     super.initState();
@@ -58,59 +61,139 @@ class _DashboardState extends State<Dashboard> {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-          automaticallyImplyLeading: false,
-        title: const Text("Dashboard"),
+        backgroundColor: Colors.grey[900],
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          "Dashboard",
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: _logout,
+            tooltip: "Logout",
           ),
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
+          ? const Center(child: CircularProgressIndicator(color: Colors.greenAccent))
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Welcome, ${name ?? user?.email ?? 'User'} 👋",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text("Role: ${role ?? 'Unknown'}"),
-            const SizedBox(height: 8),
-            Text("Points: ${points ?? 0}"),
-            const SizedBox(height: 30),
+            // Greeting
+            Text(
+              "Welcome, ${name ?? user?.email ?? 'User'}",
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: primaryGreen,
+              ),
+            ),
+            const SizedBox(height: 24),
 
-            // Different UI for Child vs Adult
+            // Points Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey[850],
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.star, color: primaryGreen, size: 36),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Eco Points",
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                      Text(
+                        "${points ?? 0}",
+                        style: TextStyle(
+                          color: primaryGreen,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 40),
+
+            // Role-specific content
             if (role == "child") ...[
-              const Text("🎮 Child Dashboard", style: TextStyle(fontSize: 18)),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () {},
-                child: const Text("Play Eco Games"),
+              Text(
+                "🎮 Child Dashboard",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: primaryGreen,
+                ),
               ),
-              ElevatedButton(
-                onPressed: () {},
-                child: const Text("View Challenges"),
-              ),
+              const SizedBox(height: 16),
+              _buildActionButton("Play Eco Games", Icons.videogame_asset, primaryGreen),
+              const SizedBox(height: 12),
+              _buildActionButton("View Challenges", Icons.flag, primaryGreen),
             ] else if (role == "adult") ...[
-              const Text("🌿 Adult Dashboard", style: TextStyle(fontSize: 18)),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () {},
-                child: const Text("View Eco Tips"),
+              Text(
+                "🌿 Adult Dashboard",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: primaryGreen,
+                ),
               ),
-              ElevatedButton(
-                onPressed: () {},
-                child: const Text("Track Family Progress"),
-              ),
+              const SizedBox(height: 16),
+              _buildActionButton("View Eco Tips", Icons.lightbulb_outline, primaryGreen),
+              const SizedBox(height: 12),
+              _buildActionButton("Track Family Progress", Icons.group, primaryGreen),
             ] else ...[
-              const Text("No specific role assigned."),
+              const Text(
+                "No specific role assigned.",
+                style: TextStyle(color: Colors.white70),
+              ),
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(String label, IconData icon, Color color) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: Icon(icon, color: Colors.black87),
+        label: Text(
+          label,
+          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onPressed: () {},
       ),
     );
   }

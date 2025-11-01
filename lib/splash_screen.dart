@@ -19,20 +19,16 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _checkUser() async {
-    // Wait for 3 seconds before checking auth (for splash display)
     await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
 
     final user = FirebaseAuth.instance.currentUser;
-    if (!mounted) return; // avoid navigation errors if widget disposed
-
     if (user != null) {
-      // User is logged in → go to Dashboard
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const Dashboard()),
       );
     } else {
-      // User not logged in → go to FlashCardsScreen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const FlashCardsScreen()),
@@ -42,50 +38,96 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
+    const orangeEco = Color(0xFFF29D38); // warm orange for "ECO"
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Circular logo placeholder
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.green.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.eco, color: Colors.green, size: 64),
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Background crumpled-paper image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/background/green_bg.jpg', // <-- add this asset
+              fit: BoxFit.cover,
+              color: Colors.black.withOpacity(0.20),
+              colorBlendMode: BlendMode.darken,
             ),
-            const SizedBox(height: 24),
+          ),
 
-            // App name text
-            const Text(
-              'GameEco',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
+          // Content
+          SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo (eco car/leaf)
+                  Image.asset(
+                    'assets/app_logo/download.png', // your logo from the screenshot
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // GAMECO (GAME white, ECO orange)
+                  RichText(
+                    text: const TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'GAME',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'ECO',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            color: orangeEco,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Tagline
+                  const Text(
+                    'SMALL CLICKS BIG IMPACT',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      letterSpacing: 1.5,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+          ),
 
-            const Text(
-              'A Greener Way to Live 🌱',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+          // Subtle loading indicator at bottom
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 28,
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+                ),
               ),
             ),
-            const SizedBox(height: 40),
-
-            const CircularProgressIndicator(
-              color: Colors.green,
-              strokeWidth: 3,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
