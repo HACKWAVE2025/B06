@@ -17,37 +17,37 @@ class DailyTasks extends StatelessWidget {
         "title": "Collect plastic waste",
         "icon": Icons.recycling,
         "description":
-        "Collect and recycle plastic waste from your home or surroundings. Sort it into recyclable bins to reduce pollution."
+        "Collect plastic bottles or wrappers from your surroundings and dispose of them responsibly. Take a picture while doing it as proof."
+      },
+      {
+        "title": "Show your reusable water bottle",
+        "icon": Icons.water_drop,
+        "description":
+        "Use a reusable water bottle instead of single-use plastic ones. Take a photo showing your eco-friendly bottle."
+      },
+      {
+        "title": "Carry your own shopping bag",
+        "icon": Icons.shopping_bag,
+        "description":
+        "Bring your cloth or paper bag when shopping to avoid plastic bags. Capture a photo showing your reusable bag."
+      },
+      {
+        "title": "Switch off unused lights",
+        "icon": Icons.lightbulb_outline,
+        "description":
+        "Turn off unnecessary lights and fans when not needed. Take a quick photo to show your energy-saving effort."
+      },
+      {
+        "title": "Use public transport or walk",
+        "icon": Icons.directions_bus,
+        "description":
+        "Reduce your carbon footprint by walking, cycling, or using public transport. Take a photo showing yourself using or near public transport, or walking outdoors."
       },
       {
         "title": "Plant a sapling",
         "icon": Icons.local_florist,
         "description":
-        "Plant a small tree or sapling near your home, garden, or park. Water it regularly to help it grow."
-      },
-      {
-        "title": "Avoid single-use plastics",
-        "icon": Icons.no_drinks,
-        "description":
-        "Say no to plastic straws, bags, and bottles today. Carry your own reusable alternatives instead."
-      },
-      {
-        "title": "Use public transport or walk",
-        "icon": Icons.directions_walk,
-        "description":
-        "Reduce your carbon footprint by walking, cycling, or taking public transport instead of private vehicles."
-      },
-      {
-        "title": "Save electricity at home",
-        "icon": Icons.lightbulb_outline,
-        "description":
-        "Turn off unnecessary lights and appliances when not in use. Unplug devices to save energy."
-      },
-      {
-        "title": "Educate a friend about sustainability",
-        "icon": Icons.groups,
-        "description":
-        "Spread awareness about eco-friendly habits and inspire others to take action toward a sustainable future."
+        "Plant a small tree or sapling and take a picture while planting or watering it."
       },
     ];
 
@@ -94,8 +94,11 @@ class DailyTasks extends StatelessWidget {
                 ),
                 margin: const EdgeInsets.symmetric(vertical: 10),
                 child: ListTile(
-                  leading: Icon(task["icon"],
-                      color: isCompleted ? Colors.white : primaryGreen, size: 32),
+                  leading: Icon(
+                    task["icon"],
+                    color: isCompleted ? Colors.white : primaryGreen,
+                    size: 32,
+                  ),
                   title: Text(
                     task["title"],
                     style: TextStyle(
@@ -136,8 +139,8 @@ class DailyTasks extends StatelessWidget {
                     if (result == true) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content:
-                          Text("${task['title']} marked as completed 🎉"),
+                          content: Text(
+                              "${task['title']} marked as completed 🎉"),
                           backgroundColor: Colors.green,
                         ),
                       );

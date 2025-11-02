@@ -51,27 +51,34 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _cameraController =
             CameraController(cameras.first, ResolutionPreset.medium);
         await _cameraController!.initialize();
+
+        // 🔦 Turn ON flashlight immediately when camera starts
+        await _cameraController!.setFlashMode(FlashMode.torch);
+
         setState(() {
           _isCameraInitialized = true;
           _isPermissionGranted = true;
         });
       }
     } else {
-      setState(() {
-        _isPermissionGranted = false;
-      });
+      setState(() => _isPermissionGranted = false);
     }
   }
 
   Future<void> _capturePhoto() async {
     if (!_isCameraInitialized || _cameraController == null) return;
 
+    // turn off flash just before taking photo to avoid glare
+    await _cameraController!.setFlashMode(FlashMode.off);
     final image = await _cameraController!.takePicture();
-    await _cameraController!.dispose();
+
+    // after capture, dispose camera and turn flash off
+    // turn off flash after capture
+    await _cameraController!.setFlashMode(FlashMode.off);
 
     setState(() {
-      _isCameraInitialized = false;
       _image = File(image.path);
+      _isCameraInitialized = false; // hide preview
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -131,17 +138,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       return;
     }
 
-    // Send to backend AI verification
     final body = jsonEncode({
       "prompt":
-      "You are an AI that verifies photo evidence for a task called '${widget.title}'. "
-          "Understand the meaning of the task from its name. Then analyze the image and check if the person seems to be performing that task. "
-          "Return only 'true' if the activity in the image clearly matches the task, otherwise return 'false'. "
-          "Do not explain or include any extra text.",
+      "You are an AI verifier. The user submits a live photo as evidence for the task '${widget.title}'. "
+          "Check if the photo looks real (not a screen or fake photo) and the action in the photo matches the description: '${widget.description}'. "
+          "Return 'true' if valid and authentic, otherwise 'false'.",
       "imageUrl": imageUrl,
     });
-
-    debugPrint("📤 Sending to Gemini Backend:\n$body");
 
     final response = await http.post(
       Uri.parse("https://ai-backend-server.vercel.app/api/gemini"),
@@ -150,8 +153,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
 
     final responseBody = json.decode(response.body);
-    debugPrint("🧠 Full API Response: $responseBody");
-
     final resultValue = responseBody["result"] ??
         responseBody["caption"] ??
         responseBody["response"] ??
@@ -159,30 +160,14 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         responseBody["message"] ??
         responseBody.toString();
 
-    debugPrint("🧠 AI Verification Response: $resultValue");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("AI Response: $resultValue"),
-        backgroundColor: Colors.blueAccent,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
     final isValid = resultValue.toString().toLowerCase().contains("true");
 
-    // ✅ Get current user's UID from Firebase Auth
     final user = FirebaseAuth.instance.currentUser;
-    final uid = user?.uid ?? "guest_user"; // fallback if not logged in
+    final uid = user?.uid ?? "guest_user";
 
     if (isValid) {
       setState(() => _isVerified = true);
 
-      // ✅ Get current user's UID
-      final user = FirebaseAuth.instance.currentUser;
-      final uid = user?.uid ?? "guest_user";
-
-      // 🔹 Store completed task in Firestore
       await FirebaseFirestore.instance.collection('tasks').add({
         "uid": uid,
         "task_name": widget.title,
@@ -192,8 +177,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         "timestamp": FieldValue.serverTimestamp(),
       });
 
-      // 🔹 Update user's total points
-      final userDocRef = FirebaseFirestore.instance.collection('users').doc(uid);
+      final userDocRef =
+      FirebaseFirestore.instance.collection('users').doc(uid);
       final userSnapshot = await userDocRef.get();
 
       int currentPoints = 0;
@@ -203,10 +188,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       }
 
       final newPoints = currentPoints + 10;
-
       await userDocRef.set({'points': newPoints}, SetOptions(merge: true));
 
-      // 🔹 Show Eco Points update
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("✅ Task verified! Eco Points: $newPoints 🌿"),
@@ -214,13 +197,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         ),
       );
 
-      // 🔹 Go back to DailyTasks page
       Future.delayed(const Duration(seconds: 2), () {
         Navigator.pop(context, true);
       });
-    }
-    else {
-      // 🔹 Store pending task
+    } else {
+      // Save the failed attempt
       await FirebaseFirestore.instance.collection('tasks').add({
         "uid": uid,
         "task_name": widget.title,
@@ -232,10 +213,22 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("❌ Verification failed. Please retake a valid photo."),
+          content: Text("❌ Verification failed. Please retake the photo."),
           backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 3),
         ),
       );
+
+      // reset and reinitialize the camera immediately
+      setState(() {
+        _image = null;
+        _isVerified = false;
+        _submitted = false;
+        _isCameraInitialized = false;
+      });
+
+      // Reopen camera and turn flashlight on again
+      await _initializeCamera();
     }
 
     setState(() => _isVerifying = false);
@@ -243,6 +236,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
   @override
   void dispose() {
+    _cameraController?.setFlashMode(FlashMode.off); // turn off before dispose
     _cameraController?.dispose();
     super.dispose();
   }
@@ -262,7 +256,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 children: [
                   Icon(widget.icon, color: primaryGreen, size: 40),
@@ -285,40 +278,42 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 style: const TextStyle(
                     color: Colors.white70, fontSize: 16, height: 1.5),
               ),
-              const SizedBox(height: 30),
-
-              // Preview or Image
+              const SizedBox(height: 20),
+              // 📸 Camera / Image preview (maintains correct aspect ratio)
               Center(
                 child: Container(
-                  width: 280,
-                  height: 200,
+                  constraints: const BoxConstraints(maxWidth: 350),
                   decoration: BoxDecoration(
                     color: Colors.grey[850],
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: primaryGreen, width: 1.5),
                   ),
-                  child: _image != null
-                      ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _image!,
-                      fit: BoxFit.cover,
+                  child: AspectRatio(
+                    aspectRatio: _image != null
+                        ? 3 / 4 // captured image ratio
+                        : (_cameraController != null
+                        ? (1 / _cameraController!.value.aspectRatio) // fix stretch
+                        : 3 / 4),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: _image != null
+                          ? Image.file(
+                        _image!,
+                        fit: BoxFit.cover, // looks natural, not zoomed in
+                      )
+                          : _isCameraInitialized
+                          ? CameraPreview(_cameraController!)
+                          : const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.greenAccent,
+                        ),
+                      ),
                     ),
-                  )
-                      : _isCameraInitialized
-                      ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: CameraPreview(_cameraController!),
-                  )
-                      : const Center(
-                    child: CircularProgressIndicator(
-                        color: Colors.greenAccent),
                   ),
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Buttons
               if (!_submitted)
                 Center(
                   child: _image == null
@@ -332,10 +327,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),
                     ),
-                    onPressed: _isCameraInitialized ? _capturePhoto : null,
+                    onPressed:
+                    _isCameraInitialized ? _capturePhoto : null,
                   )
                       : ElevatedButton.icon(
-                    icon: const Icon(Icons.refresh, color: Colors.black87),
+                    icon:
+                    const Icon(Icons.refresh, color: Colors.black87),
                     label: const Text("Retake Photo",
                         style: TextStyle(color: Colors.black87)),
                     style: ElevatedButton.styleFrom(
@@ -349,19 +346,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               else
                 Center(
                   child: _isVerifying
-                      ? const Text(
-                    "⏳ Verifying your submission...",
-                    style: TextStyle(color: Colors.white70),
-                  )
+                      ? const Text("⏳ Verifying your submission...",
+                      style: TextStyle(color: Colors.white70))
                       : _isVerified
-                      ? const Text(
-                    "✅ Task verified successfully!",
-                    style: TextStyle(color: Colors.greenAccent),
-                  )
-                      : const Text(
-                    "🕒 Task under verification...",
-                    style: TextStyle(color: Colors.white70),
-                  ),
+                      ? const Text("✅ Task verified successfully!",
+                      style: TextStyle(color: Colors.greenAccent))
+                      : const Text("🕒 Task under verification...",
+                      style: TextStyle(color: Colors.white70)),
                 ),
 
               const SizedBox(height: 20),
