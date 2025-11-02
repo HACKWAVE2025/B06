@@ -176,6 +176,16 @@ class _DashboardState extends State<Dashboard> {
                 "No specific role assigned.",
                 style: TextStyle(color: Colors.white70),
               ),
+            const SizedBox(height: 60),
+
+// ✅ Wallet Illustration
+            Center(
+              child: Image.asset(
+                'assets/illustrations/wallet.png',
+                height: 250,
+                fit: BoxFit.contain,
+              ),
+            ),
           ],
         ),
       ),
