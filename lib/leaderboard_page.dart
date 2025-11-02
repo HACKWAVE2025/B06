@@ -16,11 +16,11 @@ class LeaderboardPage extends StatelessWidget {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
         title: const Text(
           "Leaderboard",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -45,107 +45,183 @@ class LeaderboardPage extends StatelessWidget {
           }
 
           final users = snapshot.data!.docs;
+          final topThree = users.take(3).toList();
+          final others = users.skip(3).toList();
 
-          return Padding(
-            padding: const EdgeInsets.all(12),
-            child: ListView.builder(
-              itemCount: users.length,
-              itemBuilder: (context, index) {
-                final user = users[index];
-                final name = user['name'] ?? 'Unknown';
-                final points = (user['points'] ?? 0).toDouble();
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
 
-                // Gradient color for top 3
-                Color badgeColor;
-                if (index == 0) {
-                  badgeColor = Colors.amberAccent;
-                } else if (index == 1) {
-                  badgeColor = Colors.grey.shade300;
-                } else if (index == 2) {
-                  badgeColor = const Color(0xFFCD7F32);
-                } else {
-                  badgeColor = accent;
-                }
-
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOut,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: cardColor.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: badgeColor.withOpacity(0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
+                // ----- Top 3 Podium -----
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (topThree.length > 1)
+                        _buildPodiumUser(
+                          name: topThree[1]['name'] ?? 'Unknown',
+                          points: (topThree[1]['points'] ?? 0).toDouble(),
+                          rank: 2,
+                          height: 100,
+                          color: Colors.grey.shade400,
+                        ),
+                      if (topThree.isNotEmpty)
+                        _buildPodiumUser(
+                          name: topThree[0]['name'] ?? 'Unknown',
+                          points: (topThree[0]['points'] ?? 0).toDouble(),
+                          rank: 1,
+                          height: 140,
+                          color: Colors.amberAccent,
+                        ),
+                      if (topThree.length > 2)
+                        _buildPodiumUser(
+                          name: topThree[2]['name'] ?? 'Unknown',
+                          points: (topThree[2]['points'] ?? 0).toDouble(),
+                          rank: 3,
+                          height: 80,
+                          color: const Color(0xFFCD7F32),
+                        ),
                     ],
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [badgeColor, badgeColor.withOpacity(0.7)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '${index + 1}',
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
+                ),
+
+                const SizedBox(height: 40),
+
+                // ----- Other Users -----
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: others.length,
+                  itemBuilder: (context, index) {
+                    final user = others[index];
+                    final name = user['name'] ?? 'Unknown';
+                    final points = (user['points'] ?? 0).toDouble();
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white10),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: accent.withOpacity(0.3),
+                            ),
+                            child: Text(
+                              "${index + 4}",
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
                               name,
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                              ),
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500),
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.star_rounded, color: badgeColor, size: 18),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "${points.toStringAsFixed(2)} pts",
-                                  style: TextStyle(
-                                    color: badgeColor,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
+                          ),
+                          Text(
+                            "${points.toStringAsFixed(2)} pts",
+                            style: TextStyle(
+                              color: accent,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      if (index == 0)
-                        const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
-                    ],
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// 🏆 Builds one of the top 3 podium positions
+  Widget _buildPodiumUser({
+    required String name,
+    required double points,
+    required int rank,
+    required double height,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: color.withOpacity(0.9),
+            child: Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              "${points.toStringAsFixed(2)} pts",
+              style: TextStyle(color: color, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: height,
+            width: 70,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade900,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(8),
+                topRight: Radius.circular(8),
+              ),
+            ),
+            child: Text(
+              "$rank",
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
