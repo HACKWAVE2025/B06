@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'auth_page.dart';
-import 'daily_tasks.dart'; // ✅ Import new page
+import 'daily_tasks.dart';
+import 'eco_sort_game.dart'; // ✅ Import new page
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -14,7 +15,7 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   String? name;
   String? role;
-  int points = 0;
+  double points = 0.0;
   bool loading = true;
 
   final Color primaryGreen = Colors.greenAccent.shade400;
@@ -25,14 +26,12 @@ class _DashboardState extends State<Dashboard> {
     super.initState();
     _loadUserData();
   }
-
   /// ✅ Loads user data from Firestore
   Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
-      // Fetch user's document from "users" collection
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -42,15 +41,20 @@ class _DashboardState extends State<Dashboard> {
         setState(() {
           name = userDoc.data()?['name'] ?? 'User';
           role = userDoc.data()?['role'] ?? 'Unknown';
-          points = userDoc.data()?['points'] ?? 0;
+
+          // Safely handle the 'points' value, ensuring it's always a double
+          final pointsValue = userDoc.data()?['points'] ?? 0;
+
+          // Check if it's a double or int and cast accordingly
+          points = pointsValue is double ? pointsValue : pointsValue.toDouble();
+
           loading = false;
         });
       } else {
-        // User doc doesn't exist yet
         setState(() {
           name = 'User';
           role = 'Unknown';
-          points = 0;
+          points = 0.0;
           loading = false;
         });
       }
@@ -149,7 +153,7 @@ class _DashboardState extends State<Dashboard> {
                         ),
                       ),
                       Text(
-                        "$points",
+                        "${points.toStringAsFixed(2)}", // Display points as a fixed 2 decimal places
                         style: TextStyle(
                           color: primaryGreen,
                           fontSize: 28,
@@ -180,7 +184,37 @@ class _DashboardState extends State<Dashboard> {
                 Icons.videogame_asset,
                 primaryGreen,
                 onPressed: () {
-                  // TODO: Navigate to child game page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EcoSortGamePage(
+                        onRoundFinished: (score) async {
+                          final uid = FirebaseAuth.instance.currentUser?.uid;
+                          if (uid != null) {
+                            final double scoreAsDouble = score.toDouble();
+
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(uid)
+                                .update({
+                              'points': FieldValue.increment(scoreAsDouble),
+                              'totalActivities': FieldValue.increment(1),
+                            });
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('You earned $scoreAsDouble Eco Points! 🎉'),
+                                backgroundColor: Colors.greenAccent,
+                              ),
+                            );
+
+                            // Refresh dashboard to show new points
+                            _loadUserData();
+                          }
+                        },
+                      ),
+                    ),
+                  );
                 },
               ),
             ] else if (role == "adult") ...[
