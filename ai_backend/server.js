@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import mime from 'mime';
 import crypto from 'crypto';
+import fetch from 'node-fetch';
 
 // Store image hashes to detect duplicates
 const processedImages = new Map();
@@ -29,7 +30,7 @@ app.use(express.static(path.resolve('public')));
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 app.post('/api/gemini', async (req, res) => {
-  const { prompt, imagePath, imageData } = req.body;
+  const { prompt, imagePath, imageData, imageUrl } = req.body;
 
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
@@ -40,7 +41,20 @@ app.post('/api/gemini', async (req, res) => {
   try {
     let imageContent, mimeType;
     
-    if (imagePath) {
+    if (imageUrl) {
+      // Fetch image from URL
+      try {
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+        const buffer = await response.buffer();
+        imageContent = buffer.toString('base64');
+        mimeType = response.headers.get('content-type') || 'image/png';
+      } catch (err) {
+        return res.status(400).json({ error: `Failed to fetch image from URL: ${err.message}` });
+      }
+    } else if (imagePath) {
       // normalize and resolve
       const normalized = imagePath.replace(/\\/g, '/');
       resolvedPath = path.resolve(normalized);
