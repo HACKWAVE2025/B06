@@ -14,7 +14,7 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   String? name;
   String? role;
-  int? points;
+  int points = 0;
   bool loading = true;
 
   final Color primaryGreen = Colors.greenAccent.shade400;
@@ -26,20 +26,34 @@ class _DashboardState extends State<Dashboard> {
     _loadUserData();
   }
 
+  /// ✅ Loads user data from Firestore
   Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      final walletDoc = await FirebaseFirestore.instance.collection('wallets').doc(user.uid).get();
+      // Fetch user's document from "users" collection
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-      setState(() {
-        name = doc.data()?['name'] ?? 'User';
-        role = doc.data()?['role'] ?? 'Unknown';
-        points = walletDoc.data()?['points'] ?? 0;
-        loading = false;
-      });
+      if (userDoc.exists) {
+        setState(() {
+          name = userDoc.data()?['name'] ?? 'User';
+          role = userDoc.data()?['role'] ?? 'Unknown';
+          points = userDoc.data()?['points'] ?? 0;
+          loading = false;
+        });
+      } else {
+        // User doc doesn't exist yet
+        setState(() {
+          name = 'User';
+          role = 'Unknown';
+          points = 0;
+          loading = false;
+        });
+      }
     } catch (e) {
       setState(() => loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -48,6 +62,7 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  /// ✅ Logs out the user
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
     Navigator.pushAndRemoveUntil(
@@ -73,6 +88,11 @@ class _DashboardState extends State<Dashboard> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadUserData, // 🔄 Manual refresh button
+            tooltip: "Refresh",
+          ),
+          IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: _logout,
             tooltip: "Logout",
@@ -80,13 +100,15 @@ class _DashboardState extends State<Dashboard> {
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.greenAccent))
+          ? const Center(
+        child: CircularProgressIndicator(color: Colors.greenAccent),
+      )
           : SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Greeting
+            // 👋 Greeting
             Text(
               "Welcome, ${name ?? user?.email ?? 'User'}",
               style: TextStyle(
@@ -97,7 +119,7 @@ class _DashboardState extends State<Dashboard> {
             ),
             const SizedBox(height: 24),
 
-            // Points Card
+            // ⭐ Eco Points Card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -121,10 +143,13 @@ class _DashboardState extends State<Dashboard> {
                     children: [
                       const Text(
                         "Eco Points",
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
                       ),
                       Text(
-                        "${points ?? 0}",
+                        "$points",
                         style: TextStyle(
                           color: primaryGreen,
                           fontSize: 28,
@@ -139,7 +164,7 @@ class _DashboardState extends State<Dashboard> {
 
             const SizedBox(height: 40),
 
-            // Role-specific content
+            // 🧍‍♂️ Role-specific content
             if (role == "child") ...[
               Text(
                 "🎮 Child Dashboard",
@@ -154,7 +179,9 @@ class _DashboardState extends State<Dashboard> {
                 "Play GamEco",
                 Icons.videogame_asset,
                 primaryGreen,
-                onPressed: () {},
+                onPressed: () {
+                  // TODO: Navigate to child game page
+                },
               ),
             ] else if (role == "adult") ...[
               Text(
@@ -173,7 +200,9 @@ class _DashboardState extends State<Dashboard> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const DailyTasks()),
+                    MaterialPageRoute(
+                      builder: (_) => const DailyTasks(),
+                    ),
                   );
                 },
               ),
@@ -189,14 +218,21 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, Color color, {required VoidCallback onPressed}) {
+  /// ✅ Reusable styled button
+  Widget _buildActionButton(
+      String label, IconData icon, Color color, {
+        required VoidCallback onPressed,
+      }) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         icon: Icon(icon, color: Colors.black87),
         label: Text(
           label,
-          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,

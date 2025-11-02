@@ -51,6 +51,7 @@ class _LoginPageState extends State<LoginPage> {
           'name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'role': widget.role,
+          'points': 0, // Initialize points to 0'
         });
 
         await FirebaseFirestore.instance.collection('wallets').doc(userCredential.user!.uid).set({
